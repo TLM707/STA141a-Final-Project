@@ -36,13 +36,304 @@ ls(session[[1]])
 summary(session[[1]]$brain_area)
 table(session[[1]]$brain_area)
 
-summary(session[[18]])
+# summary(session[[18]])
 ```
+# Cori: Sessions 1-3
+# Forssmann: 4-7
+# Hench: 8-11
+# Lederberg: 12-18
 
-```{r , include=FALSE}
+```{r Create HTML File, include=FALSE}
 # rmarkdown::render("STA141aFinalProject.rmd")
 ```
 
-```{r , include=FALSE}
-""
+```{r variables, include=FALSE}
+names(session[[1]])
 ```
+
+# "contrast_left"  "contrast_right" "feedback_type"  "mouse_name" "brain_area"    "date_exp"       "spks"           "time" 
+
+```{r Session 1 Info, include=FALSE}
+dim(session[[1]]$spks[[1]])
+length(session[[1]]$brain_area)
+session[[1]]$spks[[1]][6,]
+```
+
+```{r , include=FALSE}
+session[[1]]$spks[[1]][6,3] 
+session[[1]]$brain_area[6]
+```
+
+# Note: The above information tells us in session 1 trail 1, the 6 neuron (from area ACA) has a spike at time bin 3.
+
+# Spike Rate is denoted as sum of spikes over the 40 time bins.
+# region_mean_spike: Avg spike rate over each region.
+
+```{r Spike rate over brain regions, include=FALSE}
+get_trail_data <- function(session_id, trail_id){
+  spikes <- session[[session_id]]$spks[[trail_id]]
+  if (any(is.na(spikes))){
+    disp("value missing")
+  }
+
+  #trail_tibble <- as_tibble(spikes) %>% set_names(binename) %>%  add_column("brain_area" = session[[session_id]]$brain_area ) %>% group_by(brain_area) %>% summarize( "sum_spikes" =across(everything(),sum),.groups = "drop") 
+  trail_tibble <- tibble("neuron_spike" = rowSums(spikes))  %>%  add_column("brain_area" = session[[session_id]]$brain_area ) %>% group_by(brain_area) %>% summarize( region_sum_spike = sum(neuron_spike), region_count = n(),region_mean_spike = mean(neuron_spike)) 
+  trail_tibble  = trail_tibble%>% add_column("trail_id" = trail_id) %>% add_column("contrast_left"= session[[session_id]]$contrast_left[trail_id]) %>% add_column("contrast_right"= session[[session_id]]$contrast_right[trail_id]) %>% add_column("feedback_type"= session[[session_id]]$feedback_type[trail_id])
+  trail_tibble 
+}
+
+trail_tibble_1_2 <- get_trail_data(1,2)
+trail_tibble_1_2
+```
+
+```{r Overall success rate, include=FALSE}
+n.session=length(session)
+
+n_success = 0
+n_trial = 0
+for(i in 1:n.session){
+    tmp = session[[i]];
+    n_trial = n_trial + length(tmp$feedback_type);
+    n_success = n_success + sum(tmp$feedback_type == 1);
+}
+n_success/n_trial
+```
+
+# Overall success rate: 71%
+
+
+```{r Number of unique brain areas, include=FALSE}
+unique_brain_areas <- unique(unlist(lapply(session, function(x) tolower(trimws(x$brain_area)))))
+length(unique_brain_areas)  
+print(unique_brain_areas) 
+```
+
+# 62 Unique Brain Areas
+
+
+```{r Number of neurons recorded per brain area accross sessions, include=FALSE}
+brain_area_counts <- data.frame(
+  brain_area = unlist(lapply(session, function(x) x$brain_area)),  # Extract all brain areas
+  session_ID = rep(1:18, times = sapply(session, function(x) length(x$brain_area)))  # Assign session IDs
+) %>%
+  group_by(brain_area) %>%
+  summarise(num_neurons = n()) %>%
+  arrange(desc(num_neurons))  # Sort by highest count
+
+# Print results
+print(brain_area_counts)
+```
+
+# Top Brain Areas: root, TH, CA1, VISp, MOs
+
+```{r Graph trials per session, include=FALSE}
+trial_counts <- sapply(session, function(x) length(x$feedback_type))
+neuron_counts <- sapply(session, function(x) length(unique(x$brain_area)))
+brain_area_counts <- sapply(session, function(x) length(unique(x$brain_area)))
+
+# Create a summary table
+eda_summary <- data.frame(
+  session_ID = 1:18,
+  num_trials = trial_counts,
+  num_neurons = neuron_counts,
+  num_brain_areas = brain_area_counts
+)
+
+print(eda_summary)
+
+muted_colors <- c( "#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C", "#FDBF6F", "#FF7F00",
+  "#C6DBEF", "#6BAED6", "#D9F0A3", "#78C679", "#FDD49E", "#FE9929",
+  "#FC9272", "#DE2D26", "#E5F5E0", "#A1D99B", "#FFD700", "#FFA500"
+)
+
+ggplot(eda_summary, aes(x = factor(session_ID), y = num_trials, fill = factor(session_ID))) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = muted_colors) +
+  labs(title = "Number of Trials Per Session", x = "Session ID", y = "Number of Trials") +
+  theme_minimal()
+```
+
+```{r Graph Heatmap of brain areas with recorded neurons, include=FALSE}
+
+# Prepare data: Count the number of neurons per brain area per session
+brain_area_per_session <- data.frame(
+  session_ID = rep(1:18, times = sapply(session, function(x) length(x$brain_area))),
+  brain_area = unlist(lapply(session, function(x) x$brain_area))
+) %>%
+  group_by(session_ID, brain_area) %>%
+  summarise(num_neurons = n(), .groups = "drop")
+
+# Plot heatmap
+ggplot(brain_area_per_session, aes(x = factor(session_ID), y = brain_area, fill = factor(session_ID))) +
+  geom_tile() +
+  scale_fill_manual(values = muted_colors) +  # Assign muted colors per session
+  labs(title = "Neuron Counts Per Brain Area Across Sessions",
+       x = "Session ID", y = "Brain Area", fill = "Session") +
+  theme_minimal()
+```
+
+```{r Percentage of success over trials, include=FALSE}
+# Initialize an empty dataframe to store results
+session_success <- tibble(
+  session_ID = integer(),
+  total_trials = integer(),
+  successful_trials = integer(),
+  success_percentage = numeric()
+)
+
+# Loop through each session and calculate success percentage
+n.session <- length(session)
+for(i in 1:n.session){
+    tmp <- session[[i]]  # Extract session data
+    
+    # Ensure feedback_type exists in the session data
+    if(!is.null(tmp$feedback_type) && length(tmp$feedback_type) > 0) {
+        total_trials <- length(tmp$feedback_type)  # Count total trials
+        successful_trials <- sum(tmp$feedback_type == 1)  # Count successes
+
+        # Compute success percentage safely
+        success_percentage <- ifelse(total_trials > 0, (successful_trials / total_trials) * 100, 0)
+
+        # Store results
+        session_success <- bind_rows(session_success, tibble(
+          session_ID = i,
+          total_trials = total_trials,
+          successful_trials = successful_trials,
+          success_percentage = success_percentage
+        ))
+    }
+}
+
+print(session_success)
+```
+
+```{r Graph Percentage of Success per mouse per session, include=FALSE}
+session_success <- session_success %>%
+  mutate(mouse_name = case_when(
+    session_ID %in% 1:3 ~ "Cori",
+    session_ID %in% 4:7 ~ "Forssmann",
+    session_ID %in% 8:11 ~ "Hench",
+    session_ID %in% 12:18 ~ "Lederberg"
+  ))
+
+ggplot(session_success, aes(x = factor(session_ID), y = success_percentage, fill = mouse_name)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("Cori" = "#A6CEE3", 
+                               "Forssmann" = "#B2DF8A", 
+                               "Hench" = "#FDBF6F", 
+                               "Lederberg" = "#DE2D26")) +  # Assign specific colors per mouse
+  labs(title = "Success Percentage Per Session (Grouped by Mouse)",
+       x = "Session ID",
+       y = "Success Percentage (%)",
+       fill = "Mouse") +
+  theme_minimal() +
+  geom_text(aes(label = round(success_percentage, 1)), vjust = -0.5, size = 4)
+```
+
+```{r Graph Average success rate per mouse, include=FALSE}
+mouse_success <- session_success %>%
+  group_by(mouse_name) %>%
+  summarise(avg_success_rate = mean(success_percentage, na.rm = TRUE))
+
+ggplot(mouse_success, aes(x = mouse_name, y = avg_success_rate, fill = mouse_name)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("Cori" = "#A6CEE3", 
+                               "Forssmann" = "#B2DF8A", 
+                               "Hench" = "#FDBF6F", 
+                               "Lederberg" = "#DE2D26")) +  # Assign colors per mouse
+  labs(title = "Average Success Percentage Per Mouse",
+       x = "Mouse",
+       y = "Average Success Percentage (%)",
+       fill = "Mouse") +
+  theme_minimal() +
+  geom_text(aes(label = round(avg_success_rate, 1)), vjust = -0.5, size = 5)
+```
+
+```{r Graph Number of trials per session, include=FALSE}
+trial_counts <- sapply(session, function(x) length(x$feedback_type))
+
+# Create a DataFrame
+trial_df <- data.frame(
+  session_ID = 1:18,
+  num_trials = trial_counts
+)
+
+# Graph
+ggplot(trial_df, aes(x = factor(session_ID), y = num_trials, fill = factor(session_ID))) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = muted_colors) +  # Apply custom color palette
+  labs(title = "Number of Trials Per Session",
+       x = "Session ID", y = "Number of Trials", fill = "Session ID") +
+  theme_minimal() +
+  geom_text(aes(label = num_trials), vjust = -0.5, size = 4)
+```
+
+```{r Graph Number of sessions per mouse, include=FALSE}
+trial_per_mouse <- data.frame(
+  session_ID = 1:18,
+  mouse_name = sapply(session, function(x) unique(x$mouse_name)),  # Extract unique mouse names
+  num_trials = sapply(session, function(x) length(x$feedback_type))
+)
+
+# Aggregate the total number of trials per mouse
+mouse_trial_counts <- trial_per_mouse %>%
+  group_by(mouse_name) %>%
+  summarise(total_trials = sum(num_trials))
+
+# Define mouse-specific colors (ensure these match previous graphs)
+mouse_colors <- c(
+  "Cori" = "#A6CEE3",       # Light Blue
+  "Forssmann" = "#B2DF8A",  # Light Green
+  "Hench" = "#FDBF6F",      # Orange
+  "Lederberg" = "#DE2D26"   # Dark Orange
+)
+
+# Graph with correctly mapped colors
+ggplot(mouse_trial_counts, aes(x = mouse_name, y = total_trials, fill = mouse_name)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = mouse_colors) +  # Explicitly assign colors per mouse
+  labs(title = "Number of Trials Per Mouse",
+       x = "Mouse Name", y = "Total Number of Trials", fill = "Mouse") +
+  theme_minimal() +
+  geom_text(aes(label = total_trials), vjust = -0.5, size = 5)
+```
+
+```{r , include=FALSE}
+for (i in 1:18) {
+  # Extract spiking activity for current session
+  spike_list <- lapply(seq_along(session[[i]]$spks), function(t) {
+    mat <- session[[i]]$spks[[t]]
+    feedback <- session[[i]]$feedback_type[t]
+    
+    as.data.frame(mat) %>%
+      mutate(neuron = 1:nrow(mat)) %>%
+      pivot_longer(cols = -neuron, names_to = "time_bin", values_to = "spike_count") %>%
+      mutate(feedback_type = feedback, session_ID = i)
+  })
+  
+  # Combine into a single dataframe
+  spike_data <- bind_rows(spike_list) %>%
+    mutate(time_bin = as.numeric(gsub("V", "", time_bin)))
+  
+  # Compute average spike count per time bin for each feedback type
+  psth_data <- spike_data %>%
+    group_by(time_bin, feedback_type) %>%
+    summarise(avg_spike_count = mean(spike_count, na.rm = TRUE), .groups = "drop")
+  
+  # Generate plot
+  p <- ggplot(psth_data, aes(x = time_bin, y = avg_spike_count, color = factor(feedback_type))) +
+    geom_line(size = 1) +
+    scale_color_manual(values = c("red", "blue"), labels = c("Failure", "Success")) +
+    labs(title = paste("Peri-Stimulus Time Histogram (PSTH) - Session", i),
+         x = "Time Bins", y = "Average Spike Count", color = "Feedback Type") +
+    theme_minimal()
+  
+  print(p)
+  
+ # ggsave(filename = paste0("PSTH_Session_", i, ".png"), plot = p, width = 8, height = 6, dpi = 300)
+```
+
+```{r , include=FALSE}
+
+```
+
