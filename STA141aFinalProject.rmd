@@ -1,0 +1,48 @@
+---
+title: "Neural Spike Analysis Project"
+author: "Taige Mueller"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Libraries, include=FALSE}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(tidyverse)
+library(caret)
+library(xgboost)
+library(pROC)
+library(tibble)
+library(RColorBrewer)
+library(explore)
+library(ggridges)
+```
+
+```{r Import, include=FALSE}
+session=list()
+for(i in 1:18){
+  session[[i]]=readRDS(paste('/Users/taige/Desktop/STA141AProject/Data/session',i,'.rds',sep=''))
+   print(session[[i]]$mouse_name)
+   print(session[[i]]$date_exp)
+}
+
+ls(session[[1]])
+summary(session[[1]]$brain_area)
+table(session[[1]]$brain_area)
+
+summary(session[[18]])
+```
+
+```{r , include=FALSE}
+# rmarkdown::render("STA141aFinalProject.rmd")
+```
+
+```{r , include=FALSE}
+""
+```
