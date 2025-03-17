@@ -333,7 +333,7 @@ psth_data <- spike_data_1 %>%
 # Generate plot
 p_1 <- ggplot(psth_data, aes(x = time_bin, y = avg_spike_count, color = factor(feedback_type))) +
   geom_line(size = 1) +
-  scale_color_manual(values = c("red", "blue"), labels = c("Failure", "Success")) +
+  scale_color_manual(values = c("#DE2D26", "#1F78B4"), labels = c("Failure", "Success")) +
   labs(title = "Peri-Stimulus Time Histogram (PSTH) - Session 1",
        x = "Time Bins", y = "Average Spike Count", color = "Feedback Type") +
   theme_minimal()
@@ -364,7 +364,7 @@ psth_data_2 <- spike_data_2 %>%
 # Generate plot
 p_2 <- ggplot(psth_data_2, aes(x = time_bin, y = avg_spike_count, color = factor(feedback_type))) +
   geom_line(size = 1) +
-  scale_color_manual(values = c("red", "blue"), labels = c("Failure", "Success")) +
+  scale_color_manual(values = c("#DE2D26", "#1F78B4"), labels = c("Failure", "Success")) +
   labs(title = "Peri-Stimulus Time Histogram (PSTH) - Session 2",
        x = "Time Bins", y = "Average Spike Count", color = "Feedback Type") +
   theme_minimal()
@@ -395,7 +395,7 @@ psth_data_3 <- spike_data_3 %>%
 # Generate plot
 p_3 <- ggplot(psth_data_3, aes(x = time_bin, y = avg_spike_count, color = factor(feedback_type))) +
   geom_line(size = 1) +
-  scale_color_manual(values = c("red", "blue"), labels = c("Failure", "Success")) +
+  scale_color_manual(values = c("#DE2D26", "#1F78B4"), labels = c("Failure", "Success")) +
   labs(title = "Peri-Stimulus Time Histogram (PSTH) - Session 3",
        x = "Time Bins", y = "Average Spike Count", color = "Feedback Type") +
   theme_minimal()
